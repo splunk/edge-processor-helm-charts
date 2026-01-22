@@ -4,9 +4,13 @@ on:
   push:
     branches:
       - main
+    # Release only if the 'version' field in Chart.yaml was updated
+    paths:
+      - charts/**/Chart.yaml
 
 jobs:
   release:
+    if: github.repository == 'splunk/edge-processor-helm-charts'
     permissions:
       contents: write
     runs-on: ubuntu-latest
