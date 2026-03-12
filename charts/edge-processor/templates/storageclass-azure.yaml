@@ -1,0 +1,18 @@
+{{- if and .Values.persistence.enabled .Values.cloudProvider.azure.enabled .Values.cloudProvider.azure.createStorageClass }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.cloudProvider.azure.storageClass }}
+  labels:
+    {{- include "edge-processor.labels" . | nindent 4 }}
+provisioner: {{ .Values.cloudProvider.azure.provisioner | default "disk.csi.azure.com" }}
+{{- if .Values.cloudProvider.azure.parameters }}
+parameters:
+  {{- range $key, $value := .Values.cloudProvider.azure.parameters }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: {{ .Values.persistence.reclaimPolicy }}
+{{- end }}

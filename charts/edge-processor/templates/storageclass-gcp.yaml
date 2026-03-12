@@ -1,0 +1,19 @@
+{{- if and .Values.persistence.enabled .Values.cloudProvider.gcp.enabled .Values.cloudProvider.gcp.createStorageClass }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.cloudProvider.gcp.storageClass }}
+  labels:
+    {{- include "edge-processor.labels" . | nindent 4 }}
+provisioner: {{ .Values.cloudProvider.gcp.provisioner | default "pd.csi.storage.gke.io" }}
+{{- if .Values.cloudProvider.gcp.parameters }}
+parameters:
+  {{- range $key, $value := .Values.cloudProvider.gcp.parameters }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: {{ .Values.persistence.reclaimPolicy }}
+{{- end }}
+

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "edge-processor.fullname" . }}
+  labels:
+    {{- include "edge-processor.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    {{- if .Values.ports.forwarder.enabled }}
+    - port: {{ .Values.ports.forwarder.port }}
+      targetPort: forwarder
+      protocol: TCP
+      name: forwarder
+    {{- end }}
+    {{- if .Values.ports.hec.enabled }}
+    - port: {{ .Values.ports.hec.port }}
+      targetPort: hec
+      protocol: TCP
+      name: hec
+    {{- end }}
+    {{- if .Values.ports.syslog.enabled }}
+    {{- range .Values.ports.syslog.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .name }}
+      protocol: {{ .protocol }}
+      name: {{ .name }}
+    {{- end }}
+    {{- end }}
+  selector:
+    {{- include "edge-processor.selectorLabels" . | nindent 4 }}

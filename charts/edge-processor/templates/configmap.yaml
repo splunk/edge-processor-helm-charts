@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "edge-processor.fullname" . }}-config
+  labels:
+    {{- include "edge-processor.labels" . | nindent 4 }}
+data:
+  # Service Principal Configuration
+  groupId: {{ .Values.config.GROUP_ID | quote }}
+  tenant: {{ .Values.config.TENANT | default "default" | quote }}
+  environment: {{ .Values.config.ENV | default "production" | quote }}
+  {{- if .Values.config }}
+  # Additional Edge Processor Configurations
+  {{- range $key, $value := .Values.config }}
+  {{- if and $value (ne $key "TENANT") (ne $key "ENV") (ne $key "GROUP_ID") (ne $key "TOKEN") }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+
+

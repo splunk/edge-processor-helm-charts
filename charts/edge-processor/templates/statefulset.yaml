@@ -1,0 +1,166 @@
+{{- if gt (.Values.deployment.replicaCount | int) 0 }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "edge-processor.fullname" . }}
+  labels:
+    {{- include "edge-processor.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "edge-processor.fullname" . }}-headless
+  replicas: {{ .Values.deployment.replicaCount }}
+  podManagementPolicy: {{ .Values.deployment.podManagementPolicy }}
+  updateStrategy:
+    {{- toYaml .Values.deployment.updateStrategy | nindent 4 }}
+  selector:
+    matchLabels:
+      {{- include "edge-processor.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "edge-processor.selectorLabels" . | nindent 8 }}
+        ep_type: "cont"
+    spec:
+      serviceAccountName: {{ include "edge-processor.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        runAsUser: {{ .Values.security.runAsUser }}
+        fsGroup: {{ .Values.security.fsGroup }}
+      containers:
+        - name: edge-processor
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            seccompProfile:
+              type: {{ .Values.security.seccompProfile.type }}
+            capabilities:
+              {{- toYaml .Values.security.capabilities | nindent 14 }}
+          env:
+            - name: EP_INSTANCE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MACHINE_HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: GROUP_ID
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: groupId
+            - name: TENANT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: tenant
+            - name: ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: environment
+          {{- if .Values.test.enabled }}
+            - name: TOKEN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: token
+          {{- end }}
+            {{- range $key, $value := .Values.container.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+          ports:
+            {{- if .Values.ports.forwarder.enabled }}
+            - name: forwarder
+              containerPort: {{ .Values.ports.forwarder.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.ports.hec.enabled }}
+            - name: hec
+              containerPort: {{ .Values.ports.hec.port }}
+              protocol: TCP
+            {{- end }}
+            {{- if .Values.ports.syslog.enabled }}
+            {{- range .Values.ports.syslog.ports }}
+            - name: {{ .name }}
+              containerPort: {{ .port }}
+              protocol: {{ .protocol }}
+            {{- end }}
+            {{- end }}
+          startupProbe:
+            {{- toYaml .Values.container.probes.startupProbe | nindent 12 }}
+          livenessProbe:
+            {{- toYaml .Values.container.probes.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.container.probes.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.container.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: ep-event-queue
+              mountPath: /opt/splunk-edge/var/data
+            - name: ep-instance-identity
+              mountPath: /opt/splunk-edge/etc
+            {{- end }}
+            - name: principal-secret
+              mountPath: /opt/splunk-edge/etc/principal.yaml
+              subPath: principal.yaml
+              readOnly: true
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    ORDINAL=$(echo $HOSTNAME | grep -o '[0-9]*$')
+                    REPLICA_COUNT={{ .Values.deployment.replicaCount }}
+                    if [ "$ORDINAL" -ge "$REPLICA_COUNT" ]; then
+                      ./splunk-edge/bin/splunk-edge offboard \
+                        --instance-id=$EP_INSTANCE_NAME \
+                        --group-id=$EP_GROUP_ID
+                      rm -f /opt/splunk-edge/etc/config.yaml
+                      rm -f /opt/splunk-edge/var/token
+                      rm -f /opt/splunk-edge/etc/identity.yaml
+                    fi
+      volumes:
+        - name: principal-secret
+          secret:
+            secretName: {{ .Values.auth.servicePrincipal.principalSecretName }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: ep-event-queue
+      spec:
+        accessModes: [ {{ .Values.persistence.accessMode | quote }} ]
+        storageClassName: {{ include "edge-processor.storageClass" . }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.eventQueue.size }}
+    - metadata:
+        name: ep-instance-identity
+      spec:
+        accessModes: [ {{ .Values.persistence.accessMode | quote }} ]
+        storageClassName: {{ include "edge-processor.storageClass" . }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.instanceIdentity.size }}
+  {{- end }}
+{{- end }}
