@@ -1,0 +1,252 @@
+# Global Configuration
+global:
+  imageRegistry: "docker.io"
+  imagePullSecrets: []
+
+# Name overrides
+nameOverride: ""
+fullnameOverride: ""
+
+# Image Configuration
+image:
+  repository: splunk/edge-processor
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+config:
+  ENV: ""
+  REGION: ""
+  TENANT: ""
+  GROUP_ID: ""
+  TOKEN: ""
+
+test:
+  enabled: false
+
+# Ports Configuration (single source of truth for both container and service)
+ports:
+  forwarder:
+    enabled: true
+    port: 9997
+  hec:
+    enabled: true
+    port: 8088
+  syslog:
+    enabled: true
+    ports:
+      - port: 10514
+        protocol: TCP
+        name: syslog-tcp
+      - port: 10514
+        protocol: UDP
+        name: syslog-udp
+
+# Authentication & Identity
+auth:
+  servicePrincipal:
+    principalSecretName: "ep-principal-secret"
+
+# Deployment Configuration
+deployment:
+  # Use StatefulSet for proper instance identity management
+  type: "StatefulSet"
+  replicaCount: 3
+  # Parallel: pods created/deleted in parallel for faster scaling
+  podManagementPolicy: "Parallel"
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      partition: 0
+
+# Container Configuration
+container:
+  env:
+    EP_CONTAINER: "true"
+    ORCHESTRATOR: "kubernetes"
+    # Additional environment variables
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+      ephemeral-storage: "4Gi"
+    requests:
+      cpu: "1"
+      memory: "2Gi"
+      ephemeral-storage: "2Gi"
+  probes:
+    # Check if edge processor is healthy by querying the otel metrics endpoint.
+    # Note: in some cases, Edge Processor might take up to 30 minutes to start listening on the metrics endpoint,
+    # so we set a big numer of retries to avoid false positives during startup.
+    # 180 retries with 10s interval = 30 minutes max wait time.
+    startupProbe:
+      httpGet: null
+      exec:
+        command:
+          - /bin/sh
+          - -c
+          - curl -sf http://127.0.0.1:8888/metrics > /dev/null
+      initialDelaySeconds: 30
+      failureThreshold: 180
+      periodSeconds: 10
+    livenessProbe:
+      tcpSocket:
+        port: 8088
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+    readinessProbe:
+      tcpSocket:
+        port: 8088
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+
+# Service Configuration
+service:
+  type: ClusterIP
+  annotations: {}
+
+# Persistent Storage
+persistence:
+  enabled: true
+  storageClass: ""  # Leave empty to use default, or specify a custom StorageClass
+  accessMode: ReadWriteOnce
+  eventQueue:
+    size: 15Gi
+  instanceIdentity:
+    size: 1Mi
+  reclaimPolicy: Delete  # Changed from Retain to Delete for auto-cleanup with PVC
+  # Note: PVs are created automatically by StorageClass - no need for pv.yaml
+
+# Auto Scaling
+autoscaling:
+  enabled: true
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  scaleDown:
+    # scale-down is disabled to prevent data loss from queued events on
+    # PVCs. if re-enabled, `stabilizationWindowSeconds` and `policies`
+    # should ideally be generous enough to allow the event queue to
+    # fully drain before the pod is terminated
+    disabled: true
+    stabilizationWindowSeconds: 600
+    policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+  # future implementation: ep-specific metrics for more accurate scaling decisions.
+  # cpu & memory are poor proxies for load since a slow or unavailable downstream
+  # can cause queue buildup without meaningfully affecting either metric. instead:
+  #   - ingestion rate (bytes/sec or events/sec): scale up when per-pod throughput
+  #     approaches a configured capacity, before queues begin to fill
+  #   - queue depth (event queue PVC utilization): scale up when the event queue
+  #     is filling faster than it drains, indicating the pod is falling behind
+  customMetrics:
+    enabled: false
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+# Cloud Provider Specific Settings
+cloudProvider:
+  aws:
+    enabled: true
+    storageClass: ""
+    createStorageClass: false
+    nodeSelector:
+      kubernetes.io/os: linux
+    tolerations: []
+    parameters:
+      type: gp3
+      iops: "3000"
+      throughput: "125"
+      encrypted: "true"
+      fsType: ext4
+    provisioner: "ebs.csi.aws.com"
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    ebsCSIDriver:
+      enabled: true
+      zones:
+        - us-west-2a
+        - us-west-2b
+        - us-west-2c
+  azure:
+    enabled: false
+    storageClass: ""
+    createStorageClass: false
+    provisioner: "disk.csi.azure.com"
+    parameters:
+      skuName: Premium_LRS
+      kind: Managed
+      fsType: ext4
+  gcp:
+    enabled: false
+    storageClass: ""
+    createStorageClass: false
+    provisioner: "pd.csi.storage.gke.io"
+    parameters:
+      type: pd-ssd
+      replication-type: regional-pd
+      fsType: ext4
+
+
+# Monitoring & Observability
+monitoring:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+  prometheusRule:
+    enabled: true
+
+# Security
+security:
+  runAsNonRoot: true
+  runAsUser: 1001
+  fsGroup: 1001
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop:
+      - ALL
+
+# Network Policies
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
+
+# RBAC
+rbac:
+  create: true
+  createClusterRole: false
+  additionalRules: []
+  additionalClusterRules: []
+
+
+# Service Account
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# Node Selection
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - edge-processor
+          topologyKey: kubernetes.io/hostname

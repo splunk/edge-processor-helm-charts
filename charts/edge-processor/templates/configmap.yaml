@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "edge-processor.fullname" . }}-config
+  labels:
+    {{- include "edge-processor.labels" . | nindent 4 }}
+data:
+  env: {{ .Values.config.ENV | default "production" | quote }}
+  region: {{ .Values.config.REGION | quote}}
+  tenant: {{ .Values.config.TENANT | quote }}
+  groupId: {{ .Values.config.GROUP_ID | quote }}

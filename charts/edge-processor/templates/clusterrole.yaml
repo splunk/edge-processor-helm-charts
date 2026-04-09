@@ -1,0 +1,33 @@
+{{- if and .Values.rbac.create .Values.rbac.createClusterRole }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "edge-processor.fullname" . }}
+  labels:
+    {{- include "edge-processor.labels" . | nindent 4 }}
+rules:
+  # Allow reading nodes for infrastructure metadata
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading namespaces
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading pods across namespaces for monitoring
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading services across namespaces
+  - apiGroups: [""]
+    resources: ["services"]
+    verbs: ["get", "list", "watch"]
+  # Allow reading metrics for autoscaling
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods", "nodes"]
+    verbs: ["get", "list"]
+  {{- if .Values.rbac.additionalClusterRules }}
+  {{- toYaml .Values.rbac.additionalClusterRules | nindent 2 }}
+  {{- end }}
+{{- end }}
+

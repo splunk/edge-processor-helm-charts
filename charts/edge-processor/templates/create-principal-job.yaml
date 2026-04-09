@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "edge-processor.fullname" . }}-generate-principal-job
+  namespace: {{ .Release.Namespace }}
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      serviceAccountName: {{ include "edge-processor.serviceAccountName" . }}-principal-job
+      containers:
+        - name: generate-principal-yaml
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          env:
+            - name: ENV
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: env
+            - name: REGION
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: region
+            - name: TENANT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: tenant
+            - name: TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-secret
+                  key: token
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              TMP_DIR=$(mktemp -d)
+              PRINCIPAL_YAML_FILE="${TMP_DIR}/principal.yaml"
+              echo "Generating principal.yaml..."
+              eptools setup > ${PRINCIPAL_YAML_FILE}
+
+              echo "Creating secret..."
+              kubectl delete secret {{ include "edge-processor.secretName" . }} --ignore-not-found=true &&
+              kubectl create secret generic {{ include "edge-processor.secretName" . }} \
+                --from-file=${PRINCIPAL_YAML_FILE}
+
+              echo "Secret '{{ include "edge-processor.secretName" . }}' created/updated."
