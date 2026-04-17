@@ -7,6 +7,32 @@ entries:
           image: splunk/edge-processor:1.0.0
     apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-04-17T14:11:37.474922349Z"
+    description: A Helm chart for Splunk Edge Processor containers
+    digest: f0bcdb4248a50efe3347be31988f9767bc03e7a9e2428496e2b5ca77922460b8
+    home: https://www.splunk.com/
+    keywords:
+    - splunk
+    - edge-processor
+    - telemetry
+    - observability
+    kubeVersion: '>=1.25-0'
+    maintainers:
+    - email: ep-team@splunk.com
+      name: Splunk Edge Processor Team
+    name: edge-processor
+    sources:
+    - https://github.com/splunk/edge-processor-helm-charts
+    type: application
+    urls:
+    - https://github.com/splunk/edge-processor-helm-charts/releases/download/edge-processor-1.0.1/edge-processor-1.0.1.tgz
+    version: 1.0.1
+  - annotations:
+      helm.sh/images: |
+        - name: edge-processor
+          image: splunk/edge-processor:1.0.0
+    apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-04-09T16:29:46.133744916Z"
     description: A Helm chart for Splunk Edge Processor containers
     digest: 3240b4a87c204692940cee5f95bf196c67eac1b0020f7bd15e623455a7fe45a5
@@ -27,4 +53,4 @@ entries:
     urls:
     - https://github.com/splunk/edge-processor-helm-charts/releases/download/edge-processor-1.0.0/edge-processor-1.0.0.tgz
     version: 1.0.0
-generated: "2026-04-09T16:29:46.133754701Z"
+generated: "2026-04-17T14:11:37.474933175Z"
