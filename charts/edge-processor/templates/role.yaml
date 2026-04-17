@@ -38,4 +38,3 @@ rules:
   {{- toYaml .Values.rbac.additionalRules | nindent 2 }}
   {{- end }}
 {{- end }}
-

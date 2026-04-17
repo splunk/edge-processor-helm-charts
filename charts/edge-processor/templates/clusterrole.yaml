@@ -30,4 +30,3 @@ rules:
   {{- toYaml .Values.rbac.additionalClusterRules | nindent 2 }}
   {{- end }}
 {{- end }}
-

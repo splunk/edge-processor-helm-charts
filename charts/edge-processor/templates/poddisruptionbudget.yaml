@@ -16,4 +16,3 @@ spec:
     matchLabels:
       {{- include "edge-processor.selectorLabels" . | nindent 6 }}
 {{- end }}
-
