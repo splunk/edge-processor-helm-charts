@@ -16,4 +16,3 @@ volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
 reclaimPolicy: {{ .Values.persistence.reclaimPolicy }}
 {{- end }}
-

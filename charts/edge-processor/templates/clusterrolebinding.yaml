@@ -14,4 +14,3 @@ subjects:
     name: {{ include "edge-processor.serviceAccountName" . }}
     namespace: {{ .Release.Namespace }}
 {{- end }}
-
