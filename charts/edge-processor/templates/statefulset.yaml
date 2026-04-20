@@ -26,8 +26,12 @@ spec:
       serviceAccountName: {{ include "edge-processor.serviceAccountName" . }}
       securityContext:
         runAsNonRoot: {{ .Values.security.runAsNonRoot }}
+        {{- if .Values.security.runAsUser }}
         runAsUser: {{ .Values.security.runAsUser }}
+        {{- end }}
+        {{- if .Values.security.fsGroup }}
         fsGroup: {{ .Values.security.fsGroup }}
+        {{- end }}
       containers:
         - name: edge-processor
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
