@@ -9,3 +9,5 @@ data:
   region: {{ .Values.config.REGION | quote}}
   tenant: {{ .Values.config.TENANT | quote }}
   groupId: {{ .Values.config.GROUP_ID | quote }}
+  complianceType: {{ .Values.config.COMPLIANCE_TYPE | quote }}
+  useFips: {{ .Values.config.USE_FIPS | quote }}

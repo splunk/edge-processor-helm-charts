@@ -73,6 +73,17 @@ Create the name of the secret storing principal and secret key info
 {{- end }}
 
 {{/*
+Build the full image reference, prepending global.imageRegistry when set.
+*/}}
+{{- define "edge-processor.image" -}}
+{{- if .Values.global.imageRegistry -}}
+{{- printf "%s/%s:%s" .Values.global.imageRegistry .Values.image.repository .Values.image.tag -}}
+{{- else -}}
+{{- printf "%s:%s" .Values.image.repository .Values.image.tag -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Determine storage class based on cloud provider
 */}}
 {{- define "edge-processor.storageClass" -}}
