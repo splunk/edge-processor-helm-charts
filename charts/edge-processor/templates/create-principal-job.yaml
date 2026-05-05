@@ -9,9 +9,13 @@ spec:
     spec:
       restartPolicy: Never
       serviceAccountName: {{ include "edge-processor.serviceAccountName" . }}-principal-job
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: generate-principal-yaml
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ include "edge-processor.image" . }}"
           env:
             - name: ENV
               valueFrom:
@@ -33,6 +37,20 @@ spec:
                 secretKeyRef:
                   name: {{ include "edge-processor.fullname" . }}-secret
                   key: token
+            - name: COMPLIANCE_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: complianceType
+            - name: USE_FIPS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: useFips
+            {{- if .Values.config.GODEBUG }}
+            - name: GODEBUG
+              value: {{ .Values.config.GODEBUG | quote }}
+            {{- end }}
           command:
             - /bin/sh
             - -c

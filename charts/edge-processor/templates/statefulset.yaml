@@ -24,6 +24,10 @@ spec:
         ep_type: "cont"
     spec:
       serviceAccountName: {{ include "edge-processor.serviceAccountName" . }}
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       securityContext:
         runAsNonRoot: {{ .Values.security.runAsNonRoot }}
         {{- if .Values.security.runAsUser }}
@@ -34,7 +38,7 @@ spec:
         {{- end }}
       containers:
         - name: edge-processor
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ include "edge-processor.image" . }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false
@@ -68,6 +72,20 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: COMPLIANCE_TYPE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: complianceType
+            - name: USE_FIPS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "edge-processor.fullname" . }}-config
+                  key: useFips
+            {{- if .Values.config.GODEBUG }}
+            - name: GODEBUG
+              value: {{ .Values.config.GODEBUG | quote }}
+            {{- end }}
             {{- range $key, $value := .Values.container.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

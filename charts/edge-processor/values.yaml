@@ -10,7 +10,7 @@ fullnameOverride: ""
 # Image Configuration
 image:
   repository: splunk/edge-processor
-  tag: "1.0.1"
+  tag: "1.0.3"
   pullPolicy: IfNotPresent
 
 config:
@@ -19,6 +19,9 @@ config:
   TENANT: ""
   GROUP_ID: ""
   TOKEN: ""
+  GODEBUG: ""
+  COMPLIANCE_TYPE: ""
+  USE_FIPS: ""
 
 test:
   enabled: false
