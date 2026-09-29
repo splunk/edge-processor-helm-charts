@@ -42,7 +42,7 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: {{ .Values.security.readOnlyRootFilesystem }}
             seccompProfile:
               type: {{ .Values.security.seccompProfile.type }}
             capabilities:
@@ -122,7 +122,14 @@ spec:
               mountPath: /opt/splunk-edge/var/data
             - name: ep-instance-identity
               mountPath: /opt/splunk-edge/etc
+            {{- else }}
+            - name: ep-etc
+              mountPath: /opt/splunk-edge/etc
             {{- end }}
+            - name: ep-var
+              mountPath: /opt/splunk-edge/var
+            - name: ep-tmp
+              mountPath: /tmp
             - name: principal-secret
               mountPath: /opt/splunk-edge/etc/principal.yaml
               subPath: principal.yaml
@@ -131,6 +138,14 @@ spec:
         - name: principal-secret
           secret:
             secretName: {{ .Values.auth.servicePrincipal.principalSecretName }}
+        - name: ep-var
+          emptyDir: {}
+        - name: ep-tmp
+          emptyDir: {}
+        {{- if not .Values.persistence.enabled }}
+        - name: ep-etc
+          emptyDir: {}
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

@@ -2,7 +2,7 @@ apiVersion: v2
 name: edge-processor
 description: A Helm chart for Splunk Edge Processor containers
 type: application
-version: 1.0.3
+version: 1.0.8
 kubeVersion: ">=1.25-0"
 home: https://www.splunk.com/
 sources:
@@ -19,4 +19,4 @@ dependencies: []
 annotations:
   helm.sh/images: |
     - name: edge-processor
-      image: splunk/edge-processor:1.0.3
+      image: splunk/edge-processor:1.0.5

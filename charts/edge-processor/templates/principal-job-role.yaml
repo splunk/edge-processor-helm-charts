@@ -6,16 +6,19 @@ metadata:
   labels:
     {{- include "edge-processor.labels" . | nindent 4 }}
 rules:
-  # Allow reading and writing secrets for credentials
+  # Allow creating the principal secret. RBAC `create` cannot be scoped
+  # by resourceName because the resource does not yet exist at admission time.
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "watch", "create", "delete"]
+    verbs: ["create"]
+  # Allow deleting only the principal secret managed by this job.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["delete"]
+    resourceNames:
+      - {{ include "edge-processor.secretName" . }}
   # Allow managing own pod information
   - apiGroups: [""]
     resources: ["pods"]
     verbs: ["get", "list", "watch"]
-  # Allow pod exec for lifecycle hooks
-  - apiGroups: [""]
-    resources: ["pods/exec"]
-    verbs: ["create"]
 {{- end }}

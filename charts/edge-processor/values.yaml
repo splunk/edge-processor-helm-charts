@@ -10,7 +10,7 @@ fullnameOverride: ""
 # Image Configuration
 image:
   repository: splunk/edge-processor
-  tag: "1.0.3"
+  tag: "1.0.5"
   pullPolicy: IfNotPresent
 
 config:
@@ -212,6 +212,7 @@ monitoring:
 security:
   runAsNonRoot: true
   runAsUser: 1001
+  readOnlyRootFilesystem: true
   fsGroup: 1001
   seccompProfile:
     type: RuntimeDefault
