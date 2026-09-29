@@ -62,8 +62,20 @@ spec:
               eptools setup > ${PRINCIPAL_YAML_FILE}
 
               echo "Creating secret..."
-              kubectl delete secret {{ include "edge-processor.secretName" . }} --ignore-not-found=true &&
-              kubectl create secret generic {{ include "edge-processor.secretName" . }} \
-                --from-file=${PRINCIPAL_YAML_FILE}
+              SA=/var/run/secrets/kubernetes.io/serviceaccount
+              API=https://kubernetes.default.svc
+              NS=$(cat "$SA/namespace")
+              TOKEN=$(cat "$SA/token")
+              B64=$(base64 -w0 "${PRINCIPAL_YAML_FILE}")
+
+              curl -sS -o /dev/null --cacert "$SA/ca.crt" -H "Authorization: Bearer ${TOKEN}" \
+                -X DELETE "${API}/api/v1/namespaces/${NS}/secrets/{{ include "edge-processor.secretName" . }}" || true
+
+              curl --fail-with-body -sS -o /dev/null --cacert "$SA/ca.crt" -H "Authorization: Bearer ${TOKEN}" \
+                -H "Content-Type: application/json" \
+                -X POST "${API}/api/v1/namespaces/${NS}/secrets" \
+                --data-binary @- <<EOF
+              {"apiVersion":"v1","kind":"Secret","metadata":{"name":"{{ include "edge-processor.secretName" . }}"},"type":"Opaque","data":{"principal.yaml":"${B64}"}}
+              EOF
 
               echo "Secret '{{ include "edge-processor.secretName" . }}' created/updated."
